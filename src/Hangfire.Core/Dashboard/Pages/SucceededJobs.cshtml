@@ -15,7 +15,7 @@
 
     var monitor = Storage.GetMonitoringApi();
     var pager = new Pager(from, perPage, monitor.SucceededListCount());
-    var succeededJobs = monitor.SucceededJobs(pager.FromRecord, pager.RecordsPerPage, filter);
+    var succeededJobs = monitor.SucceededJobs(pager.FromRecord, pager.RecordsPerPage, string.IsNullOrEmpty(filter) ? null : filter);
 }
 
 <div class="row">
@@ -46,7 +46,9 @@
                     <form class="form-inline" role="form">
                         <div class="input-group col-md-4 pull-left">
                             <span class="input-group-addon" id="job-filter">Filter</span>
-                            <input type="text" name="filter" class="form-control input-sm" placeholder="All" aria-describedby="job-filter">
+                            <input type="hidden" name="from" value="@from" />
+                            <input type="hidden" name="count" value="@perPage" />
+                            <input type="text" name="filter" class="form-control input-sm" placeholder="All" aria-describedby="job-filter" value="@filter" />
                         </div>
                     </form>
 
