@@ -1,17 +1,17 @@
 ﻿// This file is part of Hangfire.
 // Copyright © 2013-2014 Sergey Odinokov.
-// 
+//
 // Hangfire is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Lesser General Public License as 
-// published by the Free Software Foundation, either version 3 
+// it under the terms of the GNU Lesser General Public License as
+// published by the Free Software Foundation, either version 3
 // of the License, or any later version.
-// 
+//
 // Hangfire is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
-// 
-// You should have received a copy of the GNU Lesser General Public 
+//
+// You should have received a copy of the GNU Lesser General Public
 // License along with Hangfire. If not, see <http://www.gnu.org/licenses/>.
 
 using System;
@@ -43,13 +43,13 @@ namespace Hangfire.SqlServer
             _jobListLimit = jobListLimit;
         }
 
-        public long ScheduledCount()
+        public long ScheduledCount(string jobIdFilter = null)
         {
-            return UseConnection(connection => 
+            return UseConnection(connection =>
                 GetNumberOfJobsByStateName(connection, ScheduledState.StateName));
         }
 
-        public long EnqueuedCount(string queue)
+        public long EnqueuedCount(string queue, string jobIdFilter = null)
         {
             var queueApi = GetQueueApi(queue);
             var counters = queueApi.GetEnqueuedAndFetchedCount(queue);
@@ -57,7 +57,7 @@ namespace Hangfire.SqlServer
             return counters.EnqueuedCount ?? 0;
         }
 
-        public long FetchedCount(string queue)
+        public long FetchedCount(string queue, string jobIdFilter = null)
         {
             var queueApi = GetQueueApi(queue);
             var counters = queueApi.GetEnqueuedAndFetchedCount(queue);
@@ -65,23 +65,23 @@ namespace Hangfire.SqlServer
             return counters.FetchedCount ?? 0;
         }
 
-        public long FailedCount()
+        public long FailedCount(string jobIdFilter = null)
         {
-            return UseConnection(connection => 
+            return UseConnection(connection =>
                 GetNumberOfJobsByStateName(connection, FailedState.StateName));
         }
 
-        public long ProcessingCount()
+        public long ProcessingCount(string jobIdFilter = null)
         {
-            return UseConnection(connection => 
+            return UseConnection(connection =>
                 GetNumberOfJobsByStateName(connection, ProcessingState.StateName));
         }
 
-        public JobList<ProcessingJobDto> ProcessingJobs(int @from, int count)
+        public JobList<ProcessingJobDto> ProcessingJobs(int @from, int count, string jobIdFilter = null)
         {
             return UseConnection(connection => GetJobs(
                 connection,
-                from, count,
+                from, count, jobIdFilter,
                 ProcessingState.StateName,
                 (sqlJob, job, stateData) => new ProcessingJobDto
                 {
@@ -91,11 +91,11 @@ namespace Hangfire.SqlServer
                 }));
         }
 
-        public JobList<ScheduledJobDto> ScheduledJobs(int @from, int count)
+        public JobList<ScheduledJobDto> ScheduledJobs(int @from, int count, string jobIdFilter = null)
         {
             return UseConnection(connection => GetJobs(
                 connection,
-                from, count,
+                from, count, jobIdFilter,
                 ScheduledState.StateName,
                 (sqlJob, job, stateData) => new ScheduledJobDto
                 {
@@ -105,15 +105,15 @@ namespace Hangfire.SqlServer
                 }));
         }
 
-        public IDictionary<DateTime, long> SucceededByDatesCount()
+        public IDictionary<DateTime, long> SucceededByDatesCount(string jobIdFilter = null)
         {
-            return UseConnection(connection => 
+            return UseConnection(connection =>
                 GetTimelineStats(connection, "succeeded"));
         }
 
-        public IDictionary<DateTime, long> FailedByDatesCount()
+        public IDictionary<DateTime, long> FailedByDatesCount(string jobIdFilter = null)
         {
-            return UseConnection(connection => 
+            return UseConnection(connection =>
                 GetTimelineStats(connection, "failed"));
         }
 
@@ -145,12 +145,13 @@ namespace Hangfire.SqlServer
             });
         }
 
-        public JobList<FailedJobDto> FailedJobs(int @from, int count)
+        public JobList<FailedJobDto> FailedJobs(int @from, int count, string jobIdFilter = null)
         {
             return UseConnection(connection => GetJobs(
                 connection,
                 from,
                 count,
+                jobIdFilter,
                 FailedState.StateName,
                 (sqlJob, job, stateData) => new FailedJobDto
                 {
@@ -163,12 +164,13 @@ namespace Hangfire.SqlServer
                 }));
         }
 
-        public JobList<SucceededJobDto> SucceededJobs(int @from, int count)
+        public JobList<SucceededJobDto> SucceededJobs(int @from, int count, string jobIdFilter = null)
         {
             return UseConnection(connection => GetJobs(
                 connection,
                 from,
                 count,
+                jobIdFilter,
                 SucceededState.StateName,
                 (sqlJob, job, stateData) => new SucceededJobDto
                 {
@@ -181,12 +183,13 @@ namespace Hangfire.SqlServer
                 }));
         }
 
-        public JobList<DeletedJobDto> DeletedJobs(int @from, int count)
+        public JobList<DeletedJobDto> DeletedJobs(int @from, int count, string jobIdFilter = null)
         {
             return UseConnection(connection => GetJobs(
                 connection,
                 from,
                 count,
+                jobIdFilter,
                 DeletedState.StateName,
                 (sqlJob, job, stateData) => new DeletedJobDto
                 {
@@ -211,7 +214,7 @@ namespace Hangfire.SqlServer
                 var enqueuedJobIds = tuple.Monitoring.GetEnqueuedJobIds(tuple.Queue, 0, 5);
                 var counters = tuple.Monitoring.GetEnqueuedAndFetchedCount(tuple.Queue);
 
-                var firstJobs = UseConnection(connection => 
+                var firstJobs = UseConnection(connection =>
                     EnqueuedJobs(connection, enqueuedJobIds.ToArray()));
 
                 result.Add(new QueueWithTopEnqueuedJobsDto
@@ -226,7 +229,7 @@ namespace Hangfire.SqlServer
             return result;
         }
 
-        public JobList<EnqueuedJobDto> EnqueuedJobs(string queue, int @from, int perPage)
+        public JobList<EnqueuedJobDto> EnqueuedJobs(string queue, int @from, int perPage, string jobIdFilter = null)
         {
             var queueApi = GetQueueApi(queue);
             var enqueuedJobIds = queueApi.GetEnqueuedJobIds(queue, from, perPage);
@@ -234,7 +237,7 @@ namespace Hangfire.SqlServer
             return UseConnection(connection => EnqueuedJobs(connection, enqueuedJobIds.ToArray()));
         }
 
-        public JobList<FetchedJobDto> FetchedJobs(string queue, int @from, int perPage)
+        public JobList<FetchedJobDto> FetchedJobs(string queue, int @from, int perPage, string jobIdFilter = null)
         {
             var queueApi = GetQueueApi(queue);
             var fetchedJobIds = queueApi.GetFetchedJobIds(queue, from, perPage);
@@ -242,15 +245,15 @@ namespace Hangfire.SqlServer
             return UseConnection(connection => FetchedJobs(connection, fetchedJobIds));
         }
 
-        public IDictionary<DateTime, long> HourlySucceededJobs()
+        public IDictionary<DateTime, long> HourlySucceededJobs(string jobIdFilter = null)
         {
-            return UseConnection(connection => 
+            return UseConnection(connection =>
                 GetHourlyTimelineStats(connection, "succeeded"));
         }
 
-        public IDictionary<DateTime, long> HourlyFailedJobs()
+        public IDictionary<DateTime, long> HourlyFailedJobs(string jobIdFilter = null)
         {
-            return UseConnection(connection => 
+            return UseConnection(connection =>
                 GetHourlyTimelineStats(connection, "failed"));
         }
 
@@ -295,15 +298,15 @@ select * from [{_storage.SchemaName}].State with (nolock) where JobId = @id orde
             });
         }
 
-        public long SucceededListCount()
+        public long SucceededListCount(string jobIdFilter = null)
         {
-            return UseConnection(connection => 
+            return UseConnection(connection =>
                 GetNumberOfJobsByStateName(connection, SucceededState.StateName));
         }
 
-        public long DeletedListCount()
+        public long DeletedListCount(string jobIdFilter = null)
         {
-            return UseConnection(connection => 
+            return UseConnection(connection =>
                 GetNumberOfJobsByStateName(connection, DeletedState.StateName));
         }
 
@@ -429,7 +432,7 @@ where [Key] in @keys";
 
         private JobList<EnqueuedJobDto> EnqueuedJobs(DbConnection connection, int[] jobIds)
         {
-            string enqueuedJobsSql = 
+            string enqueuedJobsSql =
 $@"select j.*, s.Reason as StateReason, s.Data as StateData 
 from [{_storage.SchemaName}].Job j with (nolock)
 left join [{_storage.SchemaName}].State s with (nolock) on s.Id = j.StateId
@@ -443,7 +446,7 @@ where j.Id in @jobIds";
             var sortedSqlJobs = jobIds
                 .Select(jobId => jobs.ContainsKey(jobId) ? jobs[jobId] : new SqlJob { Id = jobId })
                 .ToList();
-            
+
             return DeserializeJobs(
                 sortedSqlJobs,
                 (sqlJob, job, stateData) => new EnqueuedJobDto
@@ -489,20 +492,23 @@ where j.Id in @jobIds";
             DbConnection connection,
             int from,
             int count,
+            string filter,
             string stateName,
             Func<SqlJob, Job, Dictionary<string, string>, TDto> selector)
         {
-            string jobsSql = 
+            string jobsSql =
 $@"select * from (
   select j.*, s.Reason as StateReason, s.Data as StateData, row_number() over (order by j.Id desc) as row_num
   from [{_storage.SchemaName}].Job j with (nolock, forceseek)
+  join [{_storage.SchemaName}].JobParameter jp with (nolock) on jp.JobId = j.Id
   left join [{_storage.SchemaName}].State s with (nolock) on j.StateId = s.Id
   where j.StateName = @stateName
+  and (@filter is null or jp.Value = @filter)
 ) as j where j.row_num between @start and @end";
 
             var jobs = connection.Query<SqlJob>(
                         jobsSql,
-                        new { stateName = stateName, start = @from + 1, end = @from + count })
+                        new { stateName = stateName, start = @from + 1, end = @from + count, filter = "\"" + filter + "\"" })
                         .ToList();
 
             return DeserializeJobs(jobs, selector);
@@ -513,12 +519,12 @@ $@"select * from (
             Func<SqlJob, Job, Dictionary<string, string>, TDto> selector)
         {
             var result = new List<KeyValuePair<string, TDto>>(jobs.Count);
-            
+
             // ReSharper disable once LoopCanBeConvertedToQuery
             foreach (var job in jobs)
             {
                 var dto = default(TDto);
-                
+
                 if (job.InvocationData != null)
                 {
                     var deserializedData = JobHelper.FromJson<Dictionary<string, string>>(job.StateData);
@@ -536,9 +542,9 @@ $@"select * from (
             return new JobList<TDto>(result);
         }
 
-        private JobList<FetchedJobDto> FetchedJobs(DbConnection connection, IEnumerable<int> jobIds)
-        { 
-            string fetchedJobsSql = 
+        private JobList<FetchedJobDto> FetchedJobs(DbConnection connection, IEnumerable<int> jobIds, string jobIdFilter = null)
+        {
+            string fetchedJobsSql =
 $@"select j.*, s.Reason as StateReason, s.Data as StateData 
 from [{_storage.SchemaName}].Job j with (nolock)
 left join [{_storage.SchemaName}].State s with (nolock) on s.Id = j.StateId

@@ -5,16 +5,17 @@
 @using Hangfire.Dashboard.Resources
 @inherits RazorPage
 @{
-    Layout = new LayoutPage(Strings.SucceededJobsPage_Title);
+    Layout = new LayoutPage(Strings.SucceededJobsPage_Title + " " + Query("filter"));
 
     int from, perPage;
+    string filter = Query("filter");
 
     int.TryParse(Query("from"), out from);
     int.TryParse(Query("count"), out perPage);
 
     var monitor = Storage.GetMonitoringApi();
     var pager = new Pager(from, perPage, monitor.SucceededListCount());
-    var succeededJobs = monitor.SucceededJobs(pager.FromRecord, pager.RecordsPerPage);
+    var succeededJobs = monitor.SucceededJobs(pager.FromRecord, pager.RecordsPerPage, filter);
 }
 
 <div class="row">
@@ -41,8 +42,15 @@
                         <span class="glyphicon glyphicon-repeat"></span>
                         @Strings.Common_RequeueJobs
                     </button>
+                    <div class="btn-toolbar-spacer pull-left"></div>
+                    <form class="form-inline" role="form">
+                        <div class="input-group col-md-4 pull-left">
+                            <span class="input-group-addon" id="job-filter">Filter</span>
+                            <input type="text" name="filter" class="form-control input-sm" placeholder="All" aria-describedby="job-filter">
+                        </div>
+                    </form>
 
-                    @Html.PerPageSelector(pager)
+                        @Html.PerPageSelector(pager)
                 </div>
 
                 <div class="table-responsive">
